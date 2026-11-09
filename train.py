@@ -30,7 +30,7 @@ def train_step(model: DeltaNet, optimizer: nnx.Optimizer, x: jax.Array, y: jax.A
 
 
 def train(model, optimizer, x, y, cfg, ckpt_mngr):
-    for step in range(cfg.num_steps):
+    for step in range(cfg.num_steps + 1):
         loss = train_step(model, optimizer, x, y)
 
         if step % 100 == 0 or step == cfg.num_steps:
