@@ -1,0 +1,5 @@
+name: default
+
+seq_len: 128
+batch_size: 2
+epochs: 10

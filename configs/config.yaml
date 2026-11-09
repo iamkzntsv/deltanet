@@ -1,0 +1,20 @@
+defaults:
+  - model: deltanet
+  - training: default
+  - _self_
+
+seed: 42
+
+hydra:
+  run:
+    dir: "outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}"
+  job_logging:
+    loggers:
+      absl:
+        level: INFO
+        handlers: [file]
+        propagate: false
+      orbax:
+        level: INFO
+        handlers: [file]
+        propagate: false

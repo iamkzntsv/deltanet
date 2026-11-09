@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deltanet"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "chex>=0.1.92",
+    "einops>=0.8.2",
+    "flax>=0.12.10",
+    "hydra-core>=1.4.0rc3",
+    "jax>=0.11.2",
+    "numpy>=2.5.3",
+    "omegaconf>=2.4.1rc2",
+    "optax>=0.2.8",
+    "prek>=0.5.10",
+]
+
+[tool.setuptools]
+packages = ["deltanet"]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.4.0",
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
+]
+
+[tool.ruff.lint]
+extend-select = ["I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["deltanet"]

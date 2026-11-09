@@ -1,0 +1,11 @@
+name: deltanet
+
+tokenizer: character
+
+model:
+  num_layers: 2
+  num_heads: 4
+  embed_dim: 128
+  conv_kernel_size: 4
+  chunk_size: 32
+  use_cw: true
