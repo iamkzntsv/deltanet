@@ -6,7 +6,10 @@ defaults:
 
 data_path: 'data/shakespeare.txt'
 
-num_steps: 1000
+seed: 42
+
+num_steps: 10000
+eval_every: 1000
 batch_size: 16
 seq_len: 256
 

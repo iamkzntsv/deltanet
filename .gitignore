@@ -17,7 +17,7 @@ multirun/
 *.log
 
 checkpoints/
-data/*
+data/*.txt
 
 .vscode/
 .idea/

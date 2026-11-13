@@ -2,7 +2,6 @@ from functools import partial
 
 import einops
 import jax
-import jax.numpy as jnp
 from flax import nnx
 
 from deltanet.chunkwise import compute_chunkwise_state
@@ -23,10 +22,14 @@ class DeltaNetBlock(nnx.Module):
         chunk_size: int,
         *,
         use_cw: bool = True,
+        normalize_keys: bool = True,
+        normalize_queries: bool = True,
         rngs: nnx.Rngs,
     ):
         self.num_heads = num_heads
         self.chunk_size = chunk_size
+        self.normalize_keys = normalize_keys
+        self.normalize_queries = normalize_queries
 
         d_key_mh = d_key * num_heads
         d_value_mh = d_value * num_heads
@@ -97,7 +100,11 @@ class DeltaNetBlock(nnx.Module):
         V = einops.rearrange(V, "b t (h d) -> b h t d", h=self.num_heads)
         beta = einops.rearrange(beta, "b t h -> b h t 1")
 
-        K, Q = normalize(K), normalize(Q)
+        if self.normalize_keys:
+            K = normalize(K)
+
+        if self.normalize_queries:
+            Q = normalize(Q)
 
         # vmap over heads then batch
         O = jax.vmap(jax.vmap(self.forward_fn))(K, V, Q, beta)
@@ -120,6 +127,8 @@ class DeltaNetLayer(nnx.Module):
         chunk_size: int,
         *,
         use_cw: bool = True,
+        normalize_keys: bool = True,
+        normalize_queries: bool = True,
         rngs: nnx.Rngs,
     ):
         self.rms_norm1 = nnx.RMSNorm(embed_dim, rngs=rngs)
@@ -132,6 +141,8 @@ class DeltaNetLayer(nnx.Module):
             conv_kernel_size=conv_kernel_size,
             chunk_size=chunk_size,
             use_cw=use_cw,
+            normalize_keys=normalize_keys,
+            normalize_queries=normalize_queries,
             rngs=rngs,
         )
         self.rms_norm2 = nnx.RMSNorm(embed_dim, rngs=rngs)
@@ -153,6 +164,8 @@ class DeltaNet(nnx.Module):
         conv_kernel_size: int,
         chunk_size: int,
         use_cw: bool = True,
+        normalize_keys: bool = True,
+        normalize_queries: bool = True,
         *,
         rngs: nnx.Rngs,
     ):
@@ -170,6 +183,8 @@ class DeltaNet(nnx.Module):
                     conv_kernel_size=conv_kernel_size,
                     chunk_size=chunk_size,
                     use_cw=use_cw,
+                    normalize_keys=normalize_keys,
+                    normalize_queries=normalize_queries,
                     rngs=rngs,
                 )
                 for _ in range(num_layers)
@@ -187,33 +202,3 @@ class DeltaNet(nnx.Module):
             x = layer(x)
 
         return self.out_proj(self.rms_norm_final(x))
-
-
-if __name__ == "__main__":
-    from deltanet.tokenizer import CharTokenizer
-
-    tokenizer = CharTokenizer("data/shakespeare.txt")
-    inputs = jnp.array(tokenizer.encode("The cat sat on a mat"))
-
-    vocab_size = tokenizer.vocab_size
-    embed_dim = 128
-    num_layers = 2
-    num_heads = 4
-    conv_kernel_size = 4
-    chunk_size = 4
-
-    rngs = nnx.Rngs(0)
-
-    inputs_batch = jnp.array([inputs] * 10)
-
-    mdl = DeltaNet(
-        vocab_size=vocab_size,
-        embed_dim=embed_dim,
-        num_layers=num_layers,
-        num_heads=num_heads,
-        conv_kernel_size=conv_kernel_size,
-        chunk_size=chunk_size,
-        rngs=rngs,
-    )
-
-    mdl(inputs_batch)

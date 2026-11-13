@@ -14,20 +14,21 @@ def new_key(split: int = 1):
     return jax.random.split(key, split)
 
 
-def sample_batch(
-    tokens: jax.Array, batch_size: int, seq_len: int, key: jax.random.PRNGKey
-):
-    starts = jax.random.randint(
-        key=key, shape=(batch_size,), minval=0, maxval=len(tokens) - seq_len
-    )
+def get_batch(key: jax.random.PRNGKey, batch_size, x, y):
+    idx = jax.random.randint(key, (batch_size,), 0, len(x))
+    return x[idx], y[idx]
 
-    offsets = jnp.arange(seq_len)
-    positions = starts[:, None] + offsets[None, :]
 
-    x = tokens[positions]
-    y = tokens[positions + 1]
+class MaskedAccuracy(nnx.metrics.Average):
+    """Used for evaluating in associative recall tasks"""
 
-    return x, y
+    def __init__(self, ignore_index=-100):
+        super().__init__()
+        self.ignore_index = ignore_index
+
+    def update(self, logits, labels, **_):
+        mask = labels != self.ignore_index
+        super().update(values=(logits.argmax(-1) == labels), mask=mask)
 
 
 class SwiGLU(nnx.Module):

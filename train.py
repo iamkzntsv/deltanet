@@ -10,38 +10,20 @@ from flax import nnx
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
 
+from deltanet.losses import associative_recall_loss, language_model_loss
 from deltanet.model import DeltaNet
-from deltanet.tokenizer import get_tokenizer
-from deltanet.utils import sample_batch
+from deltanet.tokenizer import CharTokenizer
+from deltanet.trainer import train
 
 logger = logging.getLogger(__name__)
 
 
-def loss_fn(model: DeltaNet, x: jax.Array, y: jax.Array):
-    return optax.losses.softmax_cross_entropy_with_integer_labels(model(x), y).mean()
+TOKENIZERS = {"character": CharTokenizer}
 
-
-@nnx.jit
-def train_step(model: DeltaNet, optimizer: nnx.Optimizer, x: jax.Array, y: jax.Array):
-    loss, grads = nnx.value_and_grad(loss_fn)(model, x, y)
-    optimizer.update(model, grads)
-
-    return loss
-
-
-def train(model, optimizer, x, y, cfg, ckpt_mngr):
-    for step in range(cfg.num_steps + 1):
-        loss = train_step(model, optimizer, x, y)
-
-        if step % 100 == 0 or step == cfg.num_steps:
-            logger.info(f"Step: {step}, Loss: {loss.item()}")
-
-            _graphdef, state = nnx.split(model)
-
-            ckpt_mngr.save(step, args=ocp.args.StandardSave(state))
-            ckpt_mngr.wait_until_finished()
-
-    ckpt_mngr.close()
+LOSSES = {
+    "language_modeling": language_model_loss,
+    "associative_recall": associative_recall_loss,
+}
 
 
 @hydra.main(config_path="configs", config_name="config")
@@ -51,7 +33,8 @@ def main(cfg: DictConfig):
     model_cfg = cfg.model
     train_cfg = cfg.training
 
-    tokenizer = get_tokenizer(model_cfg.tokenizer)(train_cfg.data_path)
+    tokenizer = TOKENIZERS[model_cfg.tokenizer](train_cfg.data_path)
+    loss_fn = LOSSES[cfg.objective]
 
     with open(train_cfg.data_path, encoding="utf-8") as f:
         tokens = jnp.asarray(tokenizer.encode(f.read()))
@@ -62,15 +45,33 @@ def main(cfg: DictConfig):
         model, tx=optax.adamw(**train_cfg.optimizer), wrt=nnx.Param
     )
 
-    x, y = sample_batch(
-        tokens, train_cfg.batch_size, train_cfg.seq_len, jax.random.PRNGKey(0)
-    )
-
     ckpt_dir = Path(HydraConfig.get().runtime.output_dir) / "checkpoints"
     ckpt_options = ocp.CheckpointManagerOptions(max_to_keep=3, save_interval_steps=1)
     ckpt_mngr = ocp.CheckpointManager(ckpt_dir, options=ckpt_options)
 
-    train(model, optimizer, x, y, train_cfg, ckpt_mngr)
+    # Generate Shakespeare data
+    starts = jax.random.randint(
+        key=jax.random.PRNGKey(0),
+        shape=(train_cfg.batch_size,),
+        minval=0,
+        maxval=len(tokens) - train_cfg.seq_len,
+    )
+
+    offsets = jnp.arange(train_cfg.seq_len)
+    positions = starts[:, None] + offsets[None, :]
+
+    x = tokens[positions]
+    y = tokens[positions + 1]
+
+    train(
+        model=model,
+        optimizer=optimizer,
+        loss_fn=loss_fn,
+        x=x,
+        y=y,
+        cfg=train_cfg,
+        ckpt_mngr=ckpt_mngr,
+    )
 
 
 if __name__ == "__main__":
