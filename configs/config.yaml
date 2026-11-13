@@ -4,6 +4,8 @@ defaults:
   - _self_
 
 seed: 42
+objective: language_modeling
+ckpt_dir: outputs/2026-11-09/20-06-53/checkpoints
 
 hydra:
   run:

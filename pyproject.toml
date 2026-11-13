@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["deltanet"]
+packages = ["deltanet", "deltanet.tasks"]
 
 [dependency-groups]
 dev = [

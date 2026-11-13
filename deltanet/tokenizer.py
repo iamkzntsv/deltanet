@@ -38,15 +38,3 @@ class CharTokenizer(Tokenizer):
 
     def decode(self, toks: str):
         return [self.itos[tok] for tok in toks]
-
-
-TOKENIZERS = {"character": CharTokenizer}
-
-
-def get_tokenizer(tkn_name):
-    try:
-        return TOKENIZERS[tkn_name]
-    except KeyError:
-        raise ValueError(
-            f"Unknown tokenizer. Available: {sorted(TOKENIZERS)}"
-        ) from None

@@ -1,0 +1,26 @@
+# @package _global_
+defaults:
+  - override /training: short
+
+seed: 1
+
+data:
+  vocab_size: 1024
+  num_kv_pairs: 4
+  seq_len: 64
+  num_train_examples: 100_000
+  num_test_examples: 3_000
+
+training:
+  num_steps: 5000
+  batch_size: 32
+  optimizer:
+    learning_rate: 1.0e-3
+
+model:
+  model:
+    embed_dim: 128
+
+hydra:
+  run:
+    dir: outputs/mqar/${now:%Y-%m-%d}/${now:%H-%M-%S}

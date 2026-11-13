@@ -9,3 +9,5 @@ model:
   conv_kernel_size: 4
   chunk_size: 32
   use_cw: true
+  normalize_keys: true
+  normalize_queries: true
