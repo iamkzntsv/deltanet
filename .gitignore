@@ -18,6 +18,7 @@ multirun/
 
 checkpoints/
 data/*.txt
+notebooks/__marimo__/
 
 .vscode/
 .idea/
