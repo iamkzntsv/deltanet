@@ -34,9 +34,15 @@ def main(cfg: DictConfig):
 
     rngs = nnx.Rngs(cfg.seed)
     model = DeltaNet(**model_cfg.model, vocab_size=data_cfg.vocab_size, rngs=rngs)
-    optimizer = nnx.Optimizer(
-        model, tx=optax.adamw(**train_cfg.optimizer), wrt=nnx.Param
+
+    lr_schedule = optax.warmup_cosine_decay_schedule(**train_cfg.optimizer.lr)
+
+    optimizer = optax.chain(
+        optax.clip_by_global_norm(1.0),
+        optax.adamw(learning_rate=lr_schedule, **train_cfg.optimizer.adam),
     )
+
+    optimizer = nnx.Optimizer(model, tx=optimizer, wrt=nnx.Param)
 
     ckpt_dir = Path(HydraConfig.get().runtime.output_dir) / "checkpoints"
     ckpt_options = ocp.CheckpointManagerOptions(max_to_keep=3, save_interval_steps=1)

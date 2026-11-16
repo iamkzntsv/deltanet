@@ -14,8 +14,13 @@ batch_size: 16
 seq_len: 256
 
 optimizer:
-  learning_rate: 3.0e-4
-  b1: 0.9
-  b2: 0.99
-  eps: 1.0e-8
-  nesterov: True
+  lr:
+    init_value: 0.0
+    peak_value: 3.0e-4
+    warmup_steps: ${frac:${training.num_steps},0.1}
+    decay_steps: ${training.num_steps}
+  adam:
+    b1: 0.9
+    b2: 0.99
+    eps: 1.0e-8
+    nesterov: True

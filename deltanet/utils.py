@@ -19,6 +19,26 @@ def get_batch(key: jax.random.PRNGKey, batch_size, x, y):
     return x[idx], y[idx]
 
 
+def create_shakespeare(tokenizer, data_path, batch_size, seq_len):
+    with open(data_path, encoding="utf-8") as f:
+        tokens = jnp.asarray(tokenizer.encode(f.read()))
+
+    starts = jax.random.randint(
+        key=jax.random.PRNGKey(0),
+        shape=(batch_size,),
+        minval=0,
+        maxval=len(tokens) - seq_len,
+    )
+
+    offsets = jnp.arange(seq_len)
+    positions = starts[:, None] + offsets[None, :]
+
+    x = tokens[positions]
+    y = tokens[positions + 1]
+
+    return x, y
+
+
 class MaskedAccuracy(nnx.metrics.Average):
     """Used for evaluating in associative recall tasks"""
 
