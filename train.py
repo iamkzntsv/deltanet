@@ -64,7 +64,6 @@ def main(cfg: DictConfig):
         eval_dataset=(x, y),
         cfg=train_cfg,
         ckpt_mngr=ckpt_mngr,
-        seed=cfg.seed,
     )
 
 

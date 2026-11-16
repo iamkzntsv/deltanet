@@ -2,6 +2,7 @@ from pathlib import Path
 
 import jax
 import jax.numpy as jnp
+import optax
 import pytest
 from flax import nnx
 
@@ -10,8 +11,8 @@ from deltanet.tokenizer import CharTokenizer
 from deltanet.utils import new_key, normalize
 
 DATA_PATH = Path(__file__).parent.parent / "data" / "shakespeare.txt"
-D_KEY = D_VALUE = 8
-D_QUERY = 8
+
+D_KEY = D_VALUE = D_QUERY = 8
 T = 128
 B = 16
 
@@ -51,8 +52,8 @@ def make_inputs_sequence():
 
 
 @pytest.fixture(scope="session")
-def tokens(make_deltanet):
-    tkn, _ = make_deltanet()
+def tokens(make_simple_tokenizer):
+    tkn = make_simple_tokenizer()
     text = DATA_PATH.read_text(encoding="utf-8")[:10_000]
     return jnp.array(tkn.encode(text))
 
@@ -67,22 +68,45 @@ def make_batch(tokens):
 
 
 @pytest.fixture(scope="session")
+def make_simple_tokenizer():
+    def _make():
+        return CharTokenizer("data/shakespeare.txt")
+
+    return _make
+
+
+@pytest.fixture(scope="session")
 def make_deltanet(**kwargs):
     def _make(**kwargs):
-        tkn = CharTokenizer("data/shakespeare.txt")
-        vocab_size = tkn.vocab_size
+        cfg = {
+            "vocab_size": 65,
+            "embed_dim": 128,
+            "num_layers": 2,
+            "num_heads": 4,
+            "conv_kernel_size": 4,
+            "chunk_size": 4,
+            "rngs": nnx.Rngs(0),
+        } | kwargs
 
-        mdl = DeltaNet(
-            vocab_size=vocab_size,
-            embed_dim=128,
-            num_layers=2,
-            num_heads=4,
-            conv_kernel_size=4,
-            chunk_size=4,
-            **kwargs,
-            rngs=nnx.Rngs(0),
+        mdl = DeltaNet(**cfg)
+
+        return mdl
+
+    return _make
+
+
+@pytest.fixture(scope="session")
+def make_adam_optimizer():
+    def _make(mdl, cfg):
+        lr_schedule = optax.warmup_cosine_decay_schedule(**cfg.lr)
+
+        optimizer = optax.chain(
+            optax.clip_by_global_norm(1.0),
+            optax.adamw(learning_rate=lr_schedule, **cfg.adam),
         )
 
-        return tkn, mdl
+        optimizer = nnx.Optimizer(mdl, tx=optimizer, wrt=nnx.Param)
+
+        return optimizer
 
     return _make

@@ -8,8 +8,8 @@ from flax import nnx
 def test_chunkwise_vs_recurrent(make_deltanet, make_batch):
     batch = make_batch()
 
-    _, model_cw = make_deltanet()
-    _, model_rec = make_deltanet(use_cw=False)
+    model_cw = make_deltanet()
+    model_rec = make_deltanet(use_cw=False)
 
     O_cw = model_cw(batch)
     O_rec = model_rec(batch)
@@ -18,7 +18,7 @@ def test_chunkwise_vs_recurrent(make_deltanet, make_batch):
 
 
 def test_token_causality(make_deltanet, tokens):
-    _, model = make_deltanet()
+    model = make_deltanet()
     toks = tokens[jnp.newaxis, :]
     last_tok_idx = toks.shape[1] - 1
     toks_modified = toks.at[0, last_tok_idx].set(
@@ -41,7 +41,7 @@ def test_gradient_flow(make_deltanet, make_batch, T):
 
         return loss, logits
 
-    _, model = make_deltanet()
+    model = make_deltanet()
 
     full_batch = make_batch()
     x = full_batch[:, :T]

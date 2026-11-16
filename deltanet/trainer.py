@@ -33,7 +33,7 @@ def evaluate(model, metrics, loss_fn, x, y, batch_size=16):
     return metrics.compute()
 
 
-def train(model, optimizer, loss_fn, train_dataset, eval_dataset, cfg, ckpt_mngr, seed):
+def train(model, optimizer, loss_fn, train_dataset, eval_dataset, cfg, ckpt_mngr=None):
 
     x_train, y_train = (jnp.asarray(a, dtype=jnp.int32) for a in train_dataset)
     x_test, y_test = (jnp.asarray(a, dtype=jnp.int32) for a in eval_dataset)
@@ -46,7 +46,7 @@ def train(model, optimizer, loss_fn, train_dataset, eval_dataset, cfg, ckpt_mngr
         accuracy=MaskedAccuracy(), loss=nnx.metrics.Average("loss")
     )
 
-    key = jax.random.PRNGKey(seed)
+    key = jax.random.PRNGKey(cfg.seed)
     for step in range(cfg.num_steps + 1):
         key = jax.random.fold_in(key, step)
         (
@@ -70,9 +70,11 @@ def train(model, optimizer, loss_fn, train_dataset, eval_dataset, cfg, ckpt_mngr
                 f"test loss {test_res['loss']:.4f} acc: {test_res['accuracy']:.4f}"
             )
 
-            _graphdef, state = nnx.split(model)
+            if ckpt_mngr:
+                _graphdef, state = nnx.split(model)
 
-            ckpt_mngr.save(step, args=ocp.args.StandardSave(state))
-            ckpt_mngr.wait_until_finished()
+                ckpt_mngr.save(step, args=ocp.args.StandardSave(state))
+                ckpt_mngr.wait_until_finished()
 
-    ckpt_mngr.close()
+    if ckpt_mngr:
+        ckpt_mngr.close()
