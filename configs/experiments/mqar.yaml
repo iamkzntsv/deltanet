@@ -2,23 +2,21 @@
 defaults:
   - override /training: short
 
-seed: 1
+objective: associative_recall
 
 data:
-  vocab_size: 256 # 8192
-  seq_len: 64 # 256
-  num_kv_pairs: #
+  vocab_size: 8192
+  num_kv_pairs: 64
   num_train_examples: 100_000
   num_test_examples: 10_000
 
 training:
-  num_steps: 1
+  num_steps: 10_000
   batch_size: 32
-  optimizer:
-    learning_rate: 1.0e-3
 
 model:
-  embed_dim: 128
+  model:
+    embed_dim: 128
 
 hydra:
   run:
@@ -28,6 +26,5 @@ hydra:
     subdir: ${hydra.job.override_dirname}
   sweeper:
     params:
-      model.embed_dim: 64, 128, 256
-      training.optimizer.learning_rate: 1e-4,4.6e-4,2.2e-3,1e-2
-      data.
+      model.model.embed_dim: 64, 128, 256
+      training.optimizer.lr.peak_value: 1e-4,4.6e-4,2.2e-3,1e-2
